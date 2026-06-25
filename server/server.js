@@ -13,6 +13,16 @@ app.use(express.json());
 app.use("/api/logs", require("./routes/logs"));
 app.use("/api/settings", require("./routes/settings"));
 
+app.get("/ping", (req, res) => {
+  console.log(`Ping received at ${new Date().toISOString()}`);
+
+  res.status(200).json({
+    success: true,
+    message: "Server is alive",
+    timestamp: new Date().toISOString(),
+  });
+});
+
 // MongoDB Connection
 mongoose
   .connect(process.env.MONGO_URI)
@@ -21,7 +31,7 @@ mongoose
 
     const PORT = process.env.PORT || 5000;
 
-    app.listen(PORT, () => console.log(`Server is running at http://127.0.0.1:${PORT}`)
+    app.listen(PORT, () => console.log(`Server is running at ${PORT}`)
 
     );
   })
