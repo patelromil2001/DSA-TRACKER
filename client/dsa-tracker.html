@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>consistency.log</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#14110d;
+    --surface:#1c1812;
+    --surface-2:#241f17;
+    --border:#352d20;
+    --text:#f2ece2;
+    --text-muted:#9c9282;
+    --accent:#e8a33d;
+    --accent-soft:rgba(232,163,61,0.14);
+    --good:#4fa88a;
+    --good-soft:rgba(79,168,138,0.16);
+    --danger:#d6694a;
+    --danger-soft:rgba(214,105,74,0.14);
+    --radius:14px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:radial-gradient(circle at 50% 0%, #1a160f 0%, var(--bg) 55%);
+    color:var(--text);
+    font-family:'Inter',sans-serif;
+    -webkit-font-smoothing:antialiased;
+    min-height:100vh;
+  }
+  .wrap{max-width:560px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column;}
+  .muted{color:var(--text-muted);}
+  .accent-text{color:var(--accent);}
+  button{font-family:inherit;cursor:pointer;}
+  input,textarea{font-family:inherit;}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+
+  /* Header */
+  .header{
+    position:sticky;top:0;z-index:30;
+    display:flex;align-items:center;justify-content:space-between;
+    padding:18px 18px 14px;
+    background:linear-gradient(to bottom, var(--bg) 80%, transparent);
+  }
+  .title-main{font-family:'Fraunces',serif;font-weight:600;font-size:22px;letter-spacing:-0.01em;}
+  .title-main .accent{color:var(--accent);}
+  .title-sub{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--text-muted);letter-spacing:0.03em;margin-top:2px;text-transform:uppercase;}
+  .header-right{display:flex;align-items:center;gap:10px;}
+  .mini-streak{
+    font-family:'IBM Plex Mono',monospace;font-size:13px;
+    background:var(--surface-2);border:1px solid var(--border);
+    border-radius:999px;padding:5px 10px;display:flex;align-items:center;gap:4px;
+  }
+  .icon-btn{
+    background:var(--surface-2);border:1px solid var(--border);color:var(--text);
+    width:34px;height:34px;border-radius:999px;display:flex;align-items:center;justify-content:center;
+    font-size:16px;transition:transform .15s ease, border-color .15s ease;
+  }
+  .icon-btn:hover{border-color:var(--accent);}
+  .icon-btn:active{transform:scale(0.92);}
+  .sync-dot{width:8px;height:8px;border-radius:50%;display:inline-block;background:var(--good);flex-shrink:0;}
+  .sync-dot.saving{background:var(--accent);animation:pulse 1s ease-in-out infinite;}
+  .sync-dot.error{background:var(--danger);}
+  .sync-dot.idle{background:var(--good);}
+  @keyframes pulse{50%{opacity:0.35;}}
+
+  .center-screen{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+  .spinner{width:30px;height:30px;border-radius:50%;border:3px solid var(--border);border-top-color:var(--accent);animation:spin 0.8s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  code{background:var(--surface-2);padding:2px 6px;border-radius:5px;font-family:'IBM Plex Mono',monospace;font-size:11.5px;}
+
+  /* Tab content */
+  .tab-content{flex:1;padding:0 18px 100px;}
+  .onboard-banner{
+    background:var(--accent-soft);border:1px solid var(--accent);border-radius:var(--radius);
+    padding:12px 14px;font-size:13px;line-height:1.5;margin-bottom:14px;
+  }
+
+  /* Day nav (Today tab) */
+  .day-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+  .day-nav-center{text-align:center;}
+  .day-label{font-family:'Fraunces',serif;font-size:20px;font-weight:600;}
+  .date-label{font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--text-muted);margin-top:2px;}
+
+  .progress-bar{height:6px;border-radius:999px;background:var(--surface-2);overflow:hidden;}
+  .progress-fill{height:100%;background:linear-gradient(90deg,var(--accent),#f2c873);border-radius:999px;transition:width .3s ease;}
+  .progress-caption{font-size:11.5px;color:var(--text-muted);margin:6px 0 16px;font-family:'IBM Plex Mono',monospace;}
+
+  .focus-card{
+    background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+    padding:14px 16px;margin-bottom:18px;display:flex;flex-direction:column;gap:9px;
+  }
+  .focus-row{display:flex;gap:10px;font-size:13.5px;line-height:1.45;align-items:baseline;}
+  .focus-tag{
+    font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:0.05em;font-weight:600;
+    background:var(--accent-soft);color:var(--accent);border-radius:6px;padding:3px 6px;white-space:nowrap;flex-shrink:0;
+  }
+  .focus-tag.sd{background:rgba(79,168,138,0.16);color:var(--good);}
+  .focus-tag.pat{background:rgba(157,140,219,0.16);color:#b6a4ea;}
+
+  .checklist{display:flex;flex-direction:column;gap:8px;}
+  .check-row{
+    display:flex;align-items:center;gap:11px;
+    background:var(--surface);border:1px solid var(--border);border-radius:12px;
+    padding:12px 13px;font-size:14px;transition:background .15s ease, border-color .15s ease;cursor:pointer;
+  }
+  .check-row.checked{background:var(--good-soft);border-color:rgba(79,168,138,0.4);}
+  .check-row input[type="checkbox"]{
+    width:19px;height:19px;flex-shrink:0;accent-color:var(--good);cursor:pointer;
+  }
+  .check-icon{font-size:16px;flex-shrink:0;}
+  .check-label{line-height:1.35;}
+  .notes-box{
+    width:100%;min-height:64px;resize:vertical;margin:-2px 0 4px;
+    background:var(--surface-2);border:1px solid var(--border);border-radius:10px;
+    color:var(--text);padding:10px 12px;font-size:13px;line-height:1.5;
+  }
+  .notes-box::placeholder{color:var(--text-muted);}
+
+  /* Roadmap */
+  .roadmap-header{font-size:12px;color:var(--text-muted);margin-bottom:12px;font-family:'IBM Plex Mono',monospace;}
+  .roadmap-list{display:flex;flex-direction:column;gap:6px;}
+  .roadmap-row{
+    display:flex;align-items:center;gap:12px;
+    background:var(--surface);border:1px solid var(--border);border-radius:11px;
+    padding:10px 12px;cursor:pointer;transition:border-color .15s ease;
+  }
+  .roadmap-row:hover{border-color:var(--accent);}
+  .roadmap-row.active{border-color:var(--accent);}
+  .roadmap-row.done{border-left:3px solid var(--good);}
+  .roadmap-row.partial{border-left:3px solid var(--accent);}
+  .rm-day{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600;width:34px;flex-shrink:0;}
+  .rm-date{font-family:'IBM Plex Mono',monospace;font-size:10.5px;width:54px;flex-shrink:0;}
+  .rm-content{flex:1;min-width:0;}
+  .rm-dsa{font-size:12.5px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .rm-sub{font-size:10.5px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+
+  /* Progress tab */
+  .streak-card{
+    background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+    padding:18px;text-align:center;margin-bottom:16px;
+  }
+  .streak-flames{font-size:20px;letter-spacing:2px;margin-bottom:10px;min-height:26px;}
+  @media (prefers-reduced-motion: no-preference){
+    .streak-flames span{display:inline-block;animation:flicker 2.6s ease-in-out infinite;}
+  }
+  @keyframes flicker{0%,100%{transform:translateY(0) scale(1);}50%{transform:translateY(-1px) scale(1.06);}}
+  .streak-row{display:flex;justify-content:center;gap:36px;}
+  .stat-num{font-family:'Fraunces',serif;font-size:26px;font-weight:600;}
+  .stat-label{font-size:11px;color:var(--text-muted);margin-top:2px;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:0.03em;}
+
+  .stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px;}
+  .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;text-align:center;}
+
+  .heatmap-section{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px;}
+  .small-label{font-size:11px;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:0.03em;margin-bottom:10px;}
+  .heatmap-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;}
+  .hm-cell{aspect-ratio:1;border-radius:4px;background:var(--surface-2);}
+  .hm-1{background:rgba(232,163,61,0.25);}
+  .hm-2{background:rgba(232,163,61,0.5);}
+  .hm-3{background:rgba(79,168,138,0.55);}
+  .hm-4{background:var(--good);}
+
+  /* Tab bar */
+  .tab-bar{
+    position:fixed;bottom:0;left:0;right:0;z-index:40;
+    display:flex;max-width:560px;margin:0 auto;
+    background:rgba(28,24,18,0.92);backdrop-filter:blur(10px);
+    border-top:1px solid var(--border);
+    padding:8px 10px calc(8px + env(safe-area-inset-bottom));
+  }
+  .tab-btn{
+    flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;
+    background:none;border:none;color:var(--text-muted);font-size:11px;padding:6px 0;border-radius:10px;
+  }
+  .tab-btn.active{color:var(--accent);background:var(--accent-soft);}
+  .tab-icon{font-size:17px;}
+
+  /* Modal */
+  .modal-overlay{
+    position:fixed;inset:0;background:rgba(10,8,5,0.7);z-index:100;
+    display:flex;align-items:center;justify-content:center;padding:20px;
+  }
+  .modal-card{
+    background:var(--surface);border:1px solid var(--border);border-radius:16px;
+    padding:22px;max-width:360px;width:100%;display:flex;flex-direction:column;gap:12px;
+  }
+  .modal-card h3{font-family:'Fraunces',serif;margin:0 0 4px;font-size:19px;}
+  .field-label{font-size:11.5px;color:var(--text-muted);font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:0.03em;margin-bottom:-6px;}
+  .modal-card input{
+    background:var(--surface-2);border:1px solid var(--border);color:var(--text);
+    border-radius:9px;padding:10px 12px;font-size:14px;width:100%;
+  }
+  .small-note{font-size:12px;line-height:1.5;}
+  .danger-btn{
+    background:var(--danger-soft);border:1px solid var(--danger);color:var(--danger);
+    border-radius:10px;padding:10px;font-size:13px;font-weight:500;margin-top:6px;
+  }
+  .close-btn{
+    background:var(--accent);border:none;color:#1c1409;font-weight:600;
+    border-radius:10px;padding:11px;font-size:14px;
+  }
+</style>
+</head>
+<body>
+<div id="app" class="wrap"></div>
+
+<script>
+/* ---------------- Static content ---------------- */
+
+const TOPICS = [
+  ['Arrays & Hashing', 9],
+  ['Two Pointers', 5],
+  ['Sliding Window', 6],
+  ['Stack', 7],
+  ['Binary Search', 7],
+  ['Linked List', 11],
+  ['Trees', 15],
+  ['Tries', 3],
+  ['Heap / Priority Queue', 7],
+  ['Backtracking', 9],
+  ['Graphs', 13],
+  ['Advanced Graphs', 6],
+  ['1-D Dynamic Programming', 12],
+  ['2-D Dynamic Programming', 11],
+  ['Greedy', 8],
+  ['Intervals', 6],
+  ['Math & Geometry', 8],
+  ['Bit Manipulation', 7],
+];
+const TOTAL_PROBLEMS = TOPICS.reduce((a,[,c])=>a+c,0); // 150
+
+const SD_MODULES = [
+  'How computers store & move data — disk, RAM, cache',
+  'Networking basics — IP, TCP/UDP, DNS, HTTP',
+  'Client–server communication — REST vs RPC vs WebSockets',
+  'Scaling — vertical vs horizontal, stateless services',
+  'Load balancing strategies',
+  'Databases — SQL vs NoSQL, indexing',
+  'Replication & sharding',
+  'Caching — CDNs, Redis, invalidation',
+  'Consistency, availability & the CAP theorem',
+  'Message queues & async processing',
+  'Rate limiting & API design',
+  'Proxies, gateways & service discovery',
+  'Applied: design a URL shortener',
+  'Applied: design a rate limiter',
+  'Applied: design a chat / messaging system',
+  'Applied: design a social media feed',
+];
+
+const PATTERNS = [
+  {name:'Factory Method', cat:'Creational'},
+  {name:'Abstract Factory', cat:'Creational'},
+  {name:'Builder', cat:'Creational'},
+  {name:'Prototype', cat:'Creational'},
+  {name:'Singleton', cat:'Creational'},
+  {name:'Adapter', cat:'Structural'},
+  {name:'Bridge', cat:'Structural'},
+  {name:'Composite', cat:'Structural'},
+  {name:'Decorator', cat:'Structural'},
+  {name:'Facade', cat:'Structural'},
+  {name:'Flyweight', cat:'Structural'},
+  {name:'Proxy', cat:'Structural'},
+  {name:'Chain of Responsibility', cat:'Behavioral'},
+  {name:'Command', cat:'Behavioral'},
+  {name:'Iterator', cat:'Behavioral'},
+  {name:'Mediator', cat:'Behavioral'},
+  {name:'Memento', cat:'Behavioral'},
+  {name:'Observer', cat:'Behavioral'},
+  {name:'State', cat:'Behavioral'},
+  {name:'Strategy', cat:'Behavioral'},
+  {name:'Template Method', cat:'Behavioral'},
+  {name:'Visitor', cat:'Behavioral'},
+];
+
+const ROUTINE_BASE = [
+  {icon:'🌅', label:'Wake up early & make my bed'},
+  {icon:'🏃', label:'Workout / go for a run'},
+  {icon:'🪔', label:'Morning pooja'},
+  {icon:'🍳', label:'Breakfast'},
+  {icon:'🔁', label:"Revise yesterday's material"},
+  {icon:'📘', label:'Study block — DSA pattern, system design, design pattern'},
+  {icon:'💻', label:'Solve NeetCode problems'},
+  {icon:'🎧', label:'Blinkist book summary'},
+  {icon:'🛠️', label:'Work on personal project'},
+  {icon:'💰', label:'Personal finance / investing'},
+  {icon:'🍲', label:'Cook dinner'},
+  {icon:'🗒️', label:'Plan tomorrow'},
+];
+
+function getRoutineItems(){
+  const items = ROUTINE_BASE.map(x=>({...x}));
+  const ppd = state.settings.problemsPerDay;
+  items[6].label = `Solve ${ppd} NeetCode problem${ppd>1?'s':''}`;
+  return items;
+}
+
+/* ---------------- State ---------------- */
+
+let state = {
+  settings: { startDate: todayISO(), problemsPerDay: 4 },
+  logs: {},
+  activeTab: 'today',
+  viewingDay: 0,
+  showSettings: false,
+  loading: true,
+  loadError: null,
+  syncStatus: 'idle', // 'idle' | 'saving' | 'error'
+};
+
+/* ---------------- Date helpers ---------------- */
+
+function todayISO(){ return toISO(new Date()); }
+function toISO(d){
+  const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), day=String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
+function isoToDate(iso){
+  const [y,m,d]=iso.split('-').map(Number);
+  return new Date(y,m-1,d);
+}
+function dayIndexFromISO(startISO,targetISO){
+  return Math.round((isoToDate(targetISO)-isoToDate(startISO))/86400000);
+}
+function isoFromDayIndex(startISO,idx){
+  const s=isoToDate(startISO);
+  return toISO(new Date(s.getFullYear(), s.getMonth(), s.getDate()+idx));
+}
+function formatDisplayDate(iso){
+  return isoToDate(iso).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+}
+function currentDayIndex(){
+  return dayIndexFromISO(state.settings.startDate, todayISO());
+}
+function escapeHTML(str){
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function normalizeDate(value){
+  // Backend may hand back a full ISO datetime (e.g. on auto-created settings) — keep just the date part.
+  if(!value) return todayISO();
+  const datePart = String(value).split('T')[0];
+  if(/^\d{4}-\d{2}-\d{2}$/.test(datePart)) return datePart;
+  const d = new Date(value);
+  return isNaN(d) ? todayISO() : toISO(d);
+}
+
+/* ---------------- Backend API ---------------- */
+// Paste the URL where your Express server is hosted, e.g. "https://your-app.onrender.com"
+// (no trailing slash needed — leave off the /api, that's added below).
+const API_BASE = "https://dsa-tracker-i6kw.onrender.com";
+const API_ROOT = API_BASE.replace(/\/$/, '') + '/api';
+
+async function apiGetSettings(){
+  const res = await fetch(`${API_ROOT}/settings`);
+  if(!res.ok) throw new Error(`GET /settings failed (${res.status})`);
+  return res.json();
+}
+async function apiPutSettings(settings){
+  const res = await fetch(`${API_ROOT}/settings`, {
+    method:'PUT',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify(settings),
+  });
+  if(!res.ok) throw new Error(`PUT /settings failed (${res.status})`);
+  return res.json();
+}
+async function apiGetLogs(){
+  const res = await fetch(`${API_ROOT}/logs`);
+  if(!res.ok) throw new Error(`GET /logs failed (${res.status})`);
+  return res.json();
+}
+async function apiPutLog(dayIndex, log){
+  const res = await fetch(`${API_ROOT}/logs/${dayIndex}`, {
+    method:'PUT',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ routine: log.routine, notes: log.notes }),
+  });
+  if(!res.ok) throw new Error(`PUT /logs/${dayIndex} failed (${res.status})`);
+  return res.json();
+}
+
+function updateSyncDot(){
+  const el = document.getElementById('sync-dot');
+  if(!el) return;
+  el.className = 'sync-dot ' + state.syncStatus;
+  el.title = state.syncStatus==='saving' ? 'Saving…' : state.syncStatus==='error' ? 'Sync failed — check console' : 'Synced';
+}
+
+async function loadState(){
+  state.loading = true;
+  state.loadError = null;
+  render();
+
+  if(!API_BASE){
+    state.loading = false;
+    state.loadError = 'NO_API_BASE';
+    render();
+    return;
+  }
+
+  try{
+    const [settingsRes, logsRes] = await Promise.all([apiGetSettings(), apiGetLogs()]);
+    state.settings = {
+      startDate: normalizeDate(settingsRes.startDate),
+      problemsPerDay: settingsRes.problemsPerDay || 4,
+    };
+    state.logs = {};
+    (logsRes || []).forEach(l=>{
+      const routine = (Array.isArray(l.routine) && l.routine.length===12) ? l.routine : new Array(12).fill(false);
+      state.logs[l.dayIndex] = { routine, notes: l.notes || '' };
+    });
+  }catch(e){
+    console.error(e);
+    state.loadError = e.message || 'Could not reach the server.';
+  }
+
+  state.viewingDay = currentDayIndex();
+  state.loading = false;
+  render();
+}
+
+async function saveSettings(){
+  state.syncStatus = 'saving';
+  try{
+    await apiPutSettings(state.settings);
+    state.syncStatus = 'idle';
+  }catch(e){
+    console.error('settings save failed', e);
+    state.syncStatus = 'error';
+  }
+  updateSyncDot();
+}
+
+let logSaveTimer = null;
+function saveLog(dayIdx, immediate){
+  const log = getLog(dayIdx);
+  const run = () => {
+    state.syncStatus = 'saving';
+    updateSyncDot();
+    apiPutLog(dayIdx, log)
+      .then(()=>{ state.syncStatus='idle'; updateSyncDot(); })
+      .catch(e=>{ console.error('log save failed', e); state.syncStatus='error'; updateSyncDot(); });
+  };
+  if(immediate){ run(); return; }
+  clearTimeout(logSaveTimer);
+  logSaveTimer = setTimeout(run, 450); // debounced + no render() here — keeps focus in the notes textarea while typing
+}
+
+function getLog(idx){
+  if(!state.logs[idx]) state.logs[idx] = {routine:new Array(12).fill(false), notes:''};
+  return state.logs[idx];
+}
+
+/* ---------------- Plan generation ---------------- */
+
+function totalDSADays(ppd){ return Math.ceil(TOTAL_PROBLEMS/ppd); }
+
+function getDayPlan(dayIndex){
+  const ppd = state.settings.problemsPerDay;
+  const total = totalDSADays(ppd);
+  const startIdx = dayIndex*ppd;
+  let dsaSpans = [];
+  if(startIdx < TOTAL_PROBLEMS){
+    const endIdx = Math.min(startIdx+ppd-1, TOTAL_PROBLEMS-1);
+    let cum=0;
+    for(const [name,count] of TOPICS){
+      const tStart=cum, tEnd=cum+count-1;
+      if(endIdx>=tStart && startIdx<=tEnd){
+        const ws = Math.max(startIdx,tStart)-tStart+1;
+        const we = Math.min(endIdx,tEnd)-tStart+1;
+        dsaSpans.push({name, ws, we, count});
+      }
+      cum+=count;
+    }
+  }
+  const inRange = dayIndex < total;
+  const sdIdx = Math.min(Math.floor(dayIndex*SD_MODULES.length/total), SD_MODULES.length-1);
+  const patIdx = Math.min(Math.floor(dayIndex*PATTERNS.length/total), PATTERNS.length-1);
+  return {
+    dsaSpans,
+    sd: inRange ? SD_MODULES[sdIdx] : null,
+    pattern: inRange ? PATTERNS[patIdx] : null,
+    total,
+    isReview: !inRange,
+  };
+}
+
+/* ---------------- Stats ---------------- */
+
+function computeStats(){
+  const ppd = state.settings.problemsPerDay;
+  const total = totalDSADays(ppd);
+  const maxIdx = Math.max(currentDayIndex(), 0);
+
+  let problemDays=0;
+  const sdSet=new Set(), patSet=new Set();
+  let longest=0, run=0;
+
+  for(let d=0; d<=maxIdx; d++){
+    const log = state.logs[d];
+    const complete = !!log && log.routine.every(Boolean);
+    if(complete){ run++; longest=Math.max(longest,run); } else { run=0; }
+    if(log && log.routine[6]) problemDays++;
+    if(log && log.routine[5]){
+      const plan = getDayPlan(d);
+      if(plan.sd) sdSet.add(plan.sd);
+      if(plan.pattern) patSet.add(plan.pattern.name);
+    }
+  }
+
+  let curStreak=0;
+  for(let d=maxIdx; d>=0; d--){
+    const log=state.logs[d];
+    if(log && log.routine.every(Boolean)) curStreak++; else break;
+  }
+
+  return {
+    total, maxIdx,
+    problemsEstimate: Math.min(problemDays*ppd, TOTAL_PROBLEMS),
+    sdCovered: sdSet.size,
+    patCovered: patSet.size,
+    curStreak, longest,
+  };
+}
+
+/* ---------------- Actions ---------------- */
+
+function setTab(t){ state.activeTab=t; render(); }
+function toggleSettings(v){ state.showSettings=v; render(); }
+function closeSettingsOverlay(e){ if(e.target.classList.contains('modal-overlay')) toggleSettings(false); }
+
+function changeViewingDay(delta){
+  const total = totalDSADays(state.settings.problemsPerDay);
+  state.viewingDay = Math.max(0, Math.min(state.viewingDay+delta, total+45));
+  render();
+}
+function jumpToDay(d){ state.viewingDay=d; state.activeTab='today'; render(); }
+
+function toggleRoutine(dayIdx, itemIdx){
+  const log = getLog(dayIdx);
+  log.routine[itemIdx] = !log.routine[itemIdx];
+  saveLog(dayIdx, true);
+  render();
+}
+function updateNotes(dayIdx, val){
+  getLog(dayIdx).notes = val;
+  saveLog(dayIdx, false);
+}
+
+function updateStartDate(val){
+  state.settings.startDate = val;
+  saveSettings();
+  state.viewingDay = currentDayIndex();
+  render();
+}
+function updatePPD(val){
+  const n = Math.max(1, Math.min(15, parseInt(val,10) || 4));
+  state.settings.problemsPerDay = n;
+  saveSettings();
+  render();
+}
+async function resetAllData(){
+  if(!confirm('This clears every checklist entry, note and streak on the server. This cannot be undone. Continue?')) return;
+  const dayIndexes = Object.keys(state.logs).map(Number);
+  state.logs = {};
+  toggleSettings(false);
+  state.loading = true;
+  render();
+  try{
+    await Promise.all(dayIndexes.map(d => apiPutLog(d, {routine:new Array(12).fill(false), notes:''})));
+  }catch(e){ console.error('reset failed', e); }
+  state.loading = false;
+  render();
+}
+
+/* ---------------- Render: header & tab bar ---------------- */
+
+function renderHeader(){
+  const s = computeStats();
+  return `
+  <div class="header">
+    <div>
+      <div class="title-main">consistency<span class="accent">.log</span></div>
+      <div class="title-sub">NeetCode 150 · System Design · Discipline</div>
+    </div>
+    <div class="header-right">
+      <span id="sync-dot" class="sync-dot ${state.syncStatus}" title="${state.syncStatus==='saving'?'Saving…':state.syncStatus==='error'?'Sync failed':'Synced'}"></span>
+      <div class="mini-streak">🪔 ${s.curStreak}</div>
+      <button class="icon-btn" onclick="toggleSettings(true)" aria-label="Settings">⚙</button>
+    </div>
+  </div>`;
+}
+
+function renderTabBar(){
+  const tabs = [['today','Today','✓'],['roadmap','Roadmap','🗺'],['progress','Progress','📈']];
+  return `<div class="tab-bar">
+    ${tabs.map(([key,label,icon])=>`
+      <button class="tab-btn ${state.activeTab===key?'active':''}" onclick="setTab('${key}')">
+        <span class="tab-icon">${icon}</span><span>${label}</span>
+      </button>`).join('')}
+  </div>`;
+}
+
+/* ---------------- Render: Today ---------------- */
+
+function renderToday(){
+  const dayIdx = state.viewingDay;
+  const log = getLog(dayIdx);
+  const plan = getDayPlan(dayIdx);
+  const iso = isoFromDayIndex(state.settings.startDate, dayIdx);
+  const isToday = dayIdx === currentDayIndex();
+  const items = getRoutineItems();
+  const doneCount = log.routine.filter(Boolean).length;
+  const pct = Math.round(doneCount/12*100);
+
+  const dsaText = plan.isReview
+    ? `🎉 All 150 done — mock interviews & revisit your toughest problems.`
+    : plan.dsaSpans.map(s=>`<strong>${s.name}</strong> (${s.ws===s.we? s.ws : s.ws+'–'+s.we} of ${s.count})`).join(' &nbsp;→&nbsp; ');
+
+  const onboarding = (Object.keys(state.logs).length===0 && dayIdx===0) ? `
+    <div class="onboard-banner">
+      Day 1 starts today. Pace is set to <strong>${state.settings.problemsPerDay} problems/day</strong> — that's
+      <strong>${plan.total} days (~${Math.round(plan.total/7)} weeks)</strong> for all 150. Tap ⚙ to change your start date or pace any time.
+    </div>` : '';
+
+  return `
+    ${onboarding}
+    <div class="day-nav">
+      <button class="icon-btn" onclick="changeViewingDay(-1)" aria-label="Previous day">←</button>
+      <div class="day-nav-center">
+        <div class="day-label">Day ${dayIdx+1} <span class="muted">/ ${plan.total}</span></div>
+        <div class="date-label">${formatDisplayDate(iso)}${isToday? ' · TODAY':''}</div>
+      </div>
+      <button class="icon-btn" onclick="changeViewingDay(1)" aria-label="Next day">→</button>
+    </div>
+
+    <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+    <div class="progress-caption">${doneCount}/12 done</div>
+
+    <div class="focus-card">
+      <div class="focus-row"><span class="focus-tag">DSA</span><span>${dsaText}</span></div>
+      ${plan.sd? `<div class="focus-row"><span class="focus-tag sd">SYS DESIGN</span><span>${plan.sd}</span></div>`:''}
+      ${plan.pattern? `<div class="focus-row"><span class="focus-tag pat">PATTERN</span><span>${plan.pattern.name} <span class="muted">(${plan.pattern.cat})</span></span></div>`:''}
+    </div>
+
+    <div class="checklist">
+      ${items.map((item,i)=>`
+        <label class="check-row ${log.routine[i]?'checked':''}">
+          <input type="checkbox" ${log.routine[i]?'checked':''} onchange="toggleRoutine(${dayIdx},${i})">
+          <span class="check-icon">${item.icon}</span>
+          <span class="check-label">${item.label}</span>
+        </label>
+        ${i===6? `<textarea class="notes-box" placeholder="Notes for revision — approach, what tripped you up, what to revisit..." oninput="updateNotes(${dayIdx}, this.value)">${escapeHTML(log.notes||'')}</textarea>`:''}
+      `).join('')}
+    </div>
+  `;
+}
+
+/* ---------------- Render: Roadmap ---------------- */
+
+function renderRoadmap(){
+  const total = totalDSADays(state.settings.problemsPerDay);
+  let rows='';
+  for(let d=0; d<total; d++){
+    const plan = getDayPlan(d);
+    const log = state.logs[d];
+    const doneCount = log? log.routine.filter(Boolean).length : 0;
+    const statusClass = doneCount===12 ? 'done' : doneCount>0 ? 'partial' : '';
+    const iso = isoFromDayIndex(state.settings.startDate, d);
+    const dsaText = plan.dsaSpans.map(s=>`${s.name} ${s.ws===s.we?s.ws:s.ws+'–'+s.we}/${s.count}`).join(' + ');
+    rows += `
+      <div class="roadmap-row ${statusClass} ${d===state.viewingDay?'active':''}" onclick="jumpToDay(${d})">
+        <div class="rm-day">D${d+1}</div>
+        <div class="rm-date muted">${formatDisplayDate(iso)}</div>
+        <div class="rm-content">
+          <div class="rm-dsa">${dsaText}</div>
+          <div class="rm-sub muted">${plan.sd||''}${plan.pattern? ' · '+plan.pattern.name:''}</div>
+        </div>
+      </div>`;
+  }
+  return `
+    <div class="roadmap-header">${total} days · 150 problems · ${SD_MODULES.length} system design modules · ${PATTERNS.length} design patterns</div>
+    <div class="roadmap-list">${rows}</div>
+  `;
+}
+
+/* ---------------- Render: Progress ---------------- */
+
+function renderProgress(){
+  const s = computeStats();
+  const flameCount = Math.min(s.curStreak, 14);
+  const flames = flameCount>0
+    ? Array.from({length:flameCount}).map(()=>`<span>🪔</span>`).join('') + (s.curStreak>14? ` <span class="muted">+${s.curStreak-14}</span>`:'')
+    : `<span class="muted">No streak yet — light the first one today.</span>`;
+
+  const histEnd = s.maxIdx;
+  const histStart = Math.max(0, histEnd-34);
+  let cells='';
+  for(let d=histStart; d<=histEnd; d++){
+    const log = state.logs[d];
+    const pct = log? Math.round(log.routine.filter(Boolean).length/12*100) : 0;
+    let cls='';
+    if(pct>=100) cls='hm-4'; else if(pct>=75) cls='hm-3'; else if(pct>=40) cls='hm-2'; else if(pct>0) cls='hm-1';
+    cells += `<div class="hm-cell ${cls}" title="Day ${d+1}: ${pct}%"></div>`;
+  }
+
+  return `
+    <div class="streak-card">
+      <div class="streak-flames">${flames}</div>
+      <div class="streak-row">
+        <div><div class="stat-num">${s.curStreak}</div><div class="stat-label">current streak</div></div>
+        <div><div class="stat-num">${s.longest}</div><div class="stat-label">longest streak</div></div>
+      </div>
+    </div>
+
+    <div class="stat-grid">
+      <div class="stat-card"><div class="stat-num">${s.maxIdx+1}<span class="muted">/${s.total}</span></div><div class="stat-label">days in</div></div>
+      <div class="stat-card"><div class="stat-num">${s.problemsEstimate}<span class="muted">/150</span></div><div class="stat-label">problems</div></div>
+      <div class="stat-card"><div class="stat-num">${s.sdCovered}<span class="muted">/${SD_MODULES.length}</span></div><div class="stat-label">sys design</div></div>
+      <div class="stat-card"><div class="stat-num">${s.patCovered}<span class="muted">/${PATTERNS.length}</span></div><div class="stat-label">patterns</div></div>
+    </div>
+
+    <div class="heatmap-section">
+      <div class="small-label muted">Last ${histEnd-histStart+1} days</div>
+      <div class="heatmap-grid">${cells}</div>
+    </div>
+  `;
+}
+
+/* ---------------- Render: Settings modal ---------------- */
+
+function renderSettingsModal(){
+  if(!state.showSettings) return '';
+  const ppd = state.settings.problemsPerDay;
+  return `
+  <div class="modal-overlay" onclick="closeSettingsOverlay(event)">
+    <div class="modal-card" onclick="event.stopPropagation()">
+      <h3>Settings</h3>
+      <div>
+        <div class="field-label">Start date</div>
+        <input type="date" value="${state.settings.startDate}" onchange="updateStartDate(this.value)">
+      </div>
+      <div>
+        <div class="field-label">Problems per day</div>
+        <input type="number" min="1" max="15" value="${ppd}" onchange="updatePPD(this.value)">
+      </div>
+      <div class="muted small-note">At ${ppd}/day, all 150 problems take ${totalDSADays(ppd)} days (~${Math.round(totalDSADays(ppd)/7)} weeks). System design and design patterns are spread evenly across that span.</div>
+      <div class="muted small-note">Synced to <code>${API_BASE || '(not set)'}</code>. Change the <code>API_BASE</code> constant near the top of the file to point it elsewhere.</div>
+      <button class="danger-btn" onclick="resetAllData()">Reset all progress</button>
+      <button class="close-btn" onclick="toggleSettings(false)">Done</button>
+    </div>
+  </div>`;
+}
+
+/* ---------------- Render: connection states ---------------- */
+
+function renderLoadingScreen(){
+  return `
+  <div class="center-screen">
+    <div class="spinner"></div>
+    <div class="muted" style="margin-top:16px;font-size:13px;text-align:center;line-height:1.5;">
+      Connecting to your server…<br><span style="font-size:11px;">First load can take a while if it's a free-tier host waking up.</span>
+    </div>
+  </div>`;
+}
+
+function renderSetupScreen(){
+  return `
+  <div class="center-screen" style="padding:24px;text-align:center;">
+    <div class="title-main" style="margin-bottom:12px;">consistency<span class="accent">.log</span></div>
+    <div class="muted" style="font-size:13.5px;line-height:1.6;max-width:320px;">
+      Set <code>API_BASE</code> near the top of the <code>&lt;script&gt;</code> to your hosted backend's URL
+      (e.g. <span class="accent-text">https://your-app.onrender.com</span>), then reload.
+    </div>
+  </div>`;
+}
+
+function renderLoadErrorScreen(){
+  return `
+  <div class="center-screen" style="padding:24px;text-align:center;">
+    <div style="font-size:30px;margin-bottom:10px;">⚠</div>
+    <div style="font-size:14px;line-height:1.6;max-width:320px;margin-bottom:18px;">
+      Couldn't reach your server.<br><span class="muted" style="font-size:12.5px;">${escapeHTML(state.loadError)}</span>
+    </div>
+    <button class="close-btn" style="padding:10px 22px;width:auto;" onclick="loadState()">Retry</button>
+  </div>`;
+}
+
+/* ---------------- Main render ---------------- */
+
+function render(){
+  const app = document.getElementById('app');
+
+  if(state.loading){ app.innerHTML = renderLoadingScreen(); return; }
+  if(state.loadError === 'NO_API_BASE'){ app.innerHTML = renderSetupScreen(); return; }
+  if(state.loadError){ app.innerHTML = renderLoadErrorScreen(); return; }
+
+  const content = state.activeTab==='today' ? renderToday()
+    : state.activeTab==='roadmap' ? renderRoadmap()
+    : renderProgress();
+  app.innerHTML = `
+    ${renderHeader()}
+    <div class="tab-content">${content}</div>
+    ${renderTabBar()}
+    ${renderSettingsModal()}
+  `;
+}
+
+window.addEventListener('DOMContentLoaded', loadState);
+</script>
+</body>
+</html>
